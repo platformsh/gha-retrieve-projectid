@@ -15,7 +15,7 @@ Platform.sh project and a GitHub repository. Does not require the use of a Platf
 ```yaml
     - name: 'Get our Project ID'
       id: get-projectid
-      uses: platformsh/gha-retrieve-projectid
+      uses: platformsh/gha-retrieve-projectid@main
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
