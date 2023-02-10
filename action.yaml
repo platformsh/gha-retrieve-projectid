@@ -1,0 +1,57 @@
+name: 'Retrieve Project ID via Github <--> Platform.sh integration.'
+description: 'Retrieves the project ID of the integrated Platform.sh project that is connected to a repository'
+inputs:
+  github_token:  # owner of the repo
+    description: 'Github personal access token with access rights to the target repository so we can work with the github api. **REQUIRED**.'
+    required: true
+  repository:  # owner of the repo
+    description: 'Owner/namespace of the target repository. Default of {github.repository}'
+    required: false
+    default: ${{ github.repository }}
+outputs:
+  project_id:
+    description: "Platform.sh Project ID that is integrated with the repository"
+    value: ${{ steps.get-project-id.outputs.projectid }}
+
+# Things we need to do
+# Set up our environmental variables so we can use the github cli tool
+# checkout the repo
+# query the hooks API to retrieve the hook for platform.sh
+# extract the projectID from the config.url
+runs:
+  using: "composite"
+  steps:
+    # Set up our environmental variables
+    - name: 'Setup Environmental Variables'
+      shell: bash
+      run: |
+        # in a workflow you need GITHUB_TOKEN, but I think you have to have GH_TOKEN in an action?
+        echo "GH_TOKEN=${{inputs.github_token}}" >> $GITHUB_ENV
+        echo "GITHUB_TOKEN=${{inputs.github_token}}" >> $GITHUB_ENV
+
+    - name: 'Checkout the repo'
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ inputs.repository }}
+
+    - name: 'Get project ID'
+      id:get-project-id
+      shell: bash
+      run: |
+        # grab the array entries where config.url contain 'platform.sh' then map back to an array. if our
+        # array length is 1, return the entry for config.url, otherwise return error
+        integrationURL=$(gh api "/repos/${{ github.repository }}/hooks" | jq 'map(select(.config.url | contains("platform.sh"))) | if . | length == 1 then .[0].config.url else "error" end')
+        if [[ "error" == "${integrationURL}" ]]; then
+          echo "::error::Either more than one webhook, or zero webhooks were returned. I was expecting just one."
+          exit 1
+        fi
+
+        projIDpttrn='\/projects\/([^\/]+)\/integrations'
+        if [[ "${integrationURL}" =~ ${projIDpttrn} ]]; then
+          echo "PLATFORM_PROJECT=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+          echo "::notice::Project ID is ${BASH_REMATCH[1]}"
+          echo "projectid=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+        else
+          echo "::error::We were unable to extract the project ID from the integration url of ${integrationURL}"
+          exit 1
+        fi
