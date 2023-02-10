@@ -15,7 +15,6 @@ outputs:
 
 # Things we need to do
 # Set up our environmental variables so we can use the github cli tool
-# checkout the repo
 # query the hooks API to retrieve the hook for platform.sh
 # extract the projectID from the config.url
 runs:
@@ -29,18 +28,13 @@ runs:
         echo "GH_TOKEN=${{inputs.github_token}}" >> $GITHUB_ENV
         echo "GITHUB_TOKEN=${{inputs.github_token}}" >> $GITHUB_ENV
 
-    - name: 'Checkout the repo'
-      uses: actions/checkout@v3
-      with:
-        repository: ${{ inputs.repository }}
-
     - name: 'Get project ID'
       id:get-project-id
       shell: bash
       run: |
         # grab the array entries where config.url contain 'platform.sh' then map back to an array. if our
         # array length is 1, return the entry for config.url, otherwise return error
-        integrationURL=$(gh api "/repos/${{ github.repository }}/hooks" | jq 'map(select(.config.url | contains("platform.sh"))) | if . | length == 1 then .[0].config.url else "error" end')
+        integrationURL=$(gh api "/repos/${{ inputs.repository }}/hooks" | jq 'map(select(.config.url | contains("platform.sh"))) | if . | length == 1 then .[0].config.url else "error" end')
         if [[ "error" == "${integrationURL}" ]]; then
           echo "::error::Either more than one webhook, or zero webhooks were returned. I was expecting just one."
           exit 1
