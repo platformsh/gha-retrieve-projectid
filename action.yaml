@@ -29,7 +29,7 @@ runs:
         echo "GITHUB_TOKEN=${{inputs.github_token}}" >> $GITHUB_ENV
 
     - name: 'Get project ID'
-      id:get-project-id
+      id: get-project-id
       shell: bash
       run: |
         # grab the array entries where config.url contain 'platform.sh' then map back to an array. if our
